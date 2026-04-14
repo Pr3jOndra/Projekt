@@ -54,7 +54,7 @@ def ping():
 @app.route("/status")
 def status():
     return jsonify({
-        "author": "Tvoje jméno",
+        "author": "Buček Ondřej",
         "time": datetime.now().isoformat()
     })
 
