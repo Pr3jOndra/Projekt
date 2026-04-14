@@ -78,7 +78,7 @@
 <body>
 
 <div class="container">
-    <h1>🤖 AI IT Asistent</h1>
+    <h1>AI IT Asistent</h1>
 
     <div class="label">Napiš problém nebo otázku:</div>
     <textarea id="problem" placeholder="např. Nejde mi internet v PC..."></textarea>
@@ -93,7 +93,7 @@ async function send() {
     const problem = document.getElementById("problem").value;
     const out = document.getElementById("response");
 
-    out.innerText = "⏳ AI přemýšlí...";
+    out.innerText = "AI přemýšlí...";
 
     try {
         const res = await fetch("/ai", {
@@ -106,7 +106,7 @@ async function send() {
         out.innerText = data.answer;
 
     } catch (e) {
-        out.innerText = "❌ Chyba spojení s API";
+        out.innerText = "Chyba spojení s API";
     }
 }
 </script>
