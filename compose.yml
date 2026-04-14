@@ -5,14 +5,21 @@ services:
     build: .
     ports:
       - "8081:8081"
-    volumes:
-      - db_data:/data
     environment:
       - DB_PATH=/data/db.sqlite
       - OPENAI_BASE_URL=https://kurim.ithope.eu/v1
       - OPENAI_API_KEY=sk-4cv4dSfPAv3YxI2jh...
       - MODEL_NAME=gemma3:27b
+    volumes:
+      - data:/data
     restart: unless-stopped
 
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: test
+    volumes:
+      - data:/data
+
 volumes:
-  db_data:
+  data:
