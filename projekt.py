@@ -60,51 +60,54 @@ def ping():
 
 @app.route("/ai", methods=["POST"])
 def ai():
-    return jsonify({"answer": "TEST OK"})
-    data = request.get_json(force=True)
-    problem = data.get("problem", "")
-
-    url = f"{OPENAI_BASE_URL}/chat/completions"
-
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Jsi IT asistent. Odpovídej stručně a česky."
-            },
-            {
-                "role": "user",
-                "content": problem
-            }
-        ]
-    }
-
     try:
+        data = request.get_json(force=True) or {}
+        problem = data.get("problem", "").strip()
+
+        url = f"{OPENAI_BASE_URL}/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                {"role": "system", "content": "Jsi IT asistent. Odpovídej stručně a česky."},
+                {"role": "user", "content": problem}
+            ]
+        }
+
         response = requests.post(url, headers=headers, json=payload, timeout=20)
         response.raise_for_status()
 
-        answer = response.json()["choices"][0]["message"]["content"]
+        data = response.json()
 
-    except:
+        # SAFE parsing (NECRASHUJE)
+        answer = (
+            data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "Bez odpovědi")
+        )
+
+    except Exception as e:
+        print("AI ERROR:", e)
         answer = "AI není dostupná."
 
-    # save to DB
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT INTO history (problem, answer, created_at) VALUES (?, ?, ?)",
-        (problem, answer, datetime.now().isoformat())
-    )
-    conn.commit()
-    conn.close()
+    # SAFE DB (NECRASHUJE)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT INTO history (problem, answer, created_at) VALUES (?, ?, ?)",
+            (problem, answer, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("DB ERROR:", e)
 
     return jsonify({"answer": answer})
-
 
 @app.route("/history")
 def history():
