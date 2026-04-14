@@ -60,6 +60,7 @@ def ping():
 
 @app.route("/ai", methods=["POST"])
 def ai():
+    return jsonify({"answer": "TEST OK"})
     data = request.get_json(force=True)
     problem = data.get("problem", "")
 
