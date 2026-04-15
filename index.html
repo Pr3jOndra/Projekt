@@ -117,6 +117,7 @@
 
     <button onclick="send()">Odeslat</button>
     <button onclick="loadHistory()">Načíst historii</button>
+    <button onclick="clearHistory()">Smazat historii</button>
 
     <div class="chat" id="chat"></div>
 </div>
@@ -128,7 +129,6 @@ async function send() {
 
     if (!problem.trim()) return;
 
-    // zobraz user zprávu
     chat.innerHTML += `<div class="msg user">${problem}</div>`;
     chat.innerHTML += `<div class="loading" id="loading">AI přemýšlí...</div>`;
 
@@ -177,7 +177,18 @@ async function loadHistory() {
         chat.scrollTop = chat.scrollHeight;
 
     } catch (e) {
-        chat.innerHTML = `<div class="msg ai">❌ Nepodařilo se načíst historii</div>`;
+        chat.innerHTML = `<div class="msg ai">Nepodařilo se načíst historii</div>`;
+    }
+}
+
+async function clearHistory() {
+    if (!confirm("Opravdu chceš smazat historii?")) return;
+
+    try {
+        await fetch("/clear", { method: "POST" });
+        document.getElementById("chat").innerHTML = `<div class="msg ai">Historie smazána.</div>`;
+    } catch {
+        document.getElementById("chat").innerHTML = `<div class="msg ai">Nepodařilo se smazat historii</div>`;
     }
 }
 </script>
