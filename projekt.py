@@ -105,7 +105,7 @@
 <body>
 
 <div class="container">
-    <h1>🤖 AI IT Asistent</h1>
+    <h1>AI IT Asistent</h1>
 
     <div class="author">Ondřej Buček</div>
 
@@ -130,7 +130,7 @@ async function send() {
 
     // zobraz user zprávu
     chat.innerHTML += `<div class="msg user">${problem}</div>`;
-    chat.innerHTML += `<div class="loading" id="loading">⏳ AI přemýšlí...</div>`;
+    chat.innerHTML += `<div class="loading" id="loading">AI přemýšlí...</div>`;
 
     chat.scrollTop = chat.scrollHeight;
 
@@ -150,7 +150,7 @@ async function send() {
 
     } catch (e) {
         document.getElementById("loading").remove();
-        chat.innerHTML += `<div class="msg ai">❌ Chyba API</div>`;
+        chat.innerHTML += `<div class="msg ai">Chyba API</div>`;
     }
 }
 
