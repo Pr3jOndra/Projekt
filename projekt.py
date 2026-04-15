@@ -1,110 +1,186 @@
-from flask import Flask, request, jsonify, send_file
-import requests
-import sqlite3
-import os
-from datetime import datetime
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>AI IT Asistent</title>
 
-app = Flask(__name__)
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
 
-DB_PATH = os.getenv("DB_PATH", "/data/db.sqlite")
+        .container {
+            width: 520px;
+            background: #111827;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
 
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemma3:27b")
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
 
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        .author {
+            text-align: center;
+            font-size: 13px;
+            color: #9ca3af;
+            margin-bottom: 10px;
+        }
 
-# DB SAFE INIT
-try:
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        problem TEXT,
-        answer TEXT,
-        created_at TEXT
-    )
-    """)
-    conn.close()
-except:
-    pass
+        .info {
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 15px;
+        }
 
+        textarea {
+            width: 100%;
+            height: 80px;
+            border-radius: 10px;
+            border: none;
+            padding: 10px;
+            resize: none;
+            outline: none;
+        }
 
-@app.route("/")
-def home():
-    return send_file("index.html")
+        button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+        }
 
+        button:hover {
+            background: #2563eb;
+        }
 
-@app.route("/ping")
-def ping():
-    return "pong"
+        .chat {
+            margin-top: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
+        .msg {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+            white-space: pre-wrap;
+        }
 
-@app.route("/ai", methods=["POST"])
-def ai():
-    try:
-        data = request.get_json(force=True) or {}
-        problem = data.get("problem", "")
+        .user {
+            background: #374151;
+            align-self: flex-end;
+        }
 
-        # fallback když API nefunguje
-        answer = "AI není dostupná."
+        .ai {
+            background: #1f2937;
+            align-self: flex-start;
+        }
 
-        try:
-            r = requests.post(
-                f"{OPENAI_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": MODEL_NAME,
-                    "messages": [
-                        {"role": "system", "content": "Odpovídej stručně česky."},
-                        {"role": "user", "content": problem}
-                    ]
-                },
-                timeout=15
-            )
+        .loading {
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
 
-            if r.ok:
-                j = r.json()
-                answer = j.get("choices", [{}])[0].get("message", {}).get("content", answer)
+<body>
 
-        except Exception as e:
-            print("API error:", e)
+<div class="container">
+    <h1>🤖 AI IT Asistent</h1>
 
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.execute(
-                "INSERT INTO history (problem, answer, created_at) VALUES (?, ?, ?)",
-                (problem, answer, datetime.now().isoformat())
-            )
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    <div class="author">Ondřej Buček</div>
 
-        return jsonify({"answer": answer})
+    <div class="info">
+        Nástroj pro <b>stručné odpovědi IT podpory</b>
+    </div>
 
-    except Exception as e:
-        print("GLOBAL ERROR:", e)
-        return jsonify({"answer": "Server error"})
+    <textarea id="problem" placeholder="např. Nejde mi internet..."></textarea>
 
+    <button onclick="send()">Odeslat</button>
+    <button onclick="loadHistory()">Načíst historii</button>
 
-@app.route("/history")
-def history():
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        rows = conn.execute("SELECT * FROM history ORDER BY id DESC").fetchall()
-        conn.close()
+    <div class="chat" id="chat"></div>
+</div>
 
-        return jsonify([
-            {"id": r[0], "problem": r[1], "answer": r[2], "created_at": r[3]}
-            for r in rows
-        ])
-    except:
-        return jsonify([])
+<script>
+async function send() {
+    const problem = document.getElementById("problem").value;
+    const chat = document.getElementById("chat");
 
+    if (!problem.trim()) return;
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8081)
+    // zobraz user zprávu
+    chat.innerHTML += `<div class="msg user">${problem}</div>`;
+    chat.innerHTML += `<div class="loading" id="loading">⏳ AI přemýšlí...</div>`;
+
+    chat.scrollTop = chat.scrollHeight;
+
+    try {
+        const res = await fetch("/ai", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({problem})
+        });
+
+        const data = await res.json();
+
+        document.getElementById("loading").remove();
+
+        chat.innerHTML += `<div class="msg ai">${data.answer}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+
+    } catch (e) {
+        document.getElementById("loading").remove();
+        chat.innerHTML += `<div class="msg ai">❌ Chyba API</div>`;
+    }
+}
+
+async function loadHistory() {
+    const chat = document.getElementById("chat");
+    chat.innerHTML = `<div class="loading">Načítám historii...</div>`;
+
+    try {
+        const res = await fetch("/history");
+        const data = await res.json();
+
+        chat.innerHTML = "";
+
+        if (data.length === 0) {
+            chat.innerHTML = `<div class="msg ai">Žádná historie.</div>`;
+            return;
+        }
+
+        data.reverse().forEach(item => {
+            chat.innerHTML += `<div class="msg user">${item.problem}</div>`;
+            chat.innerHTML += `<div class="msg ai">${item.answer}</div>`;
+        });
+
+        chat.scrollTop = chat.scrollHeight;
+
+    } catch (e) {
+        chat.innerHTML = `<div class="msg ai">❌ Nepodařilo se načíst historii</div>`;
+    }
+}
+</script>
+
+</body>
+</html>
