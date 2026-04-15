@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <title>AI IT Asistent</title>
@@ -15,7 +17,7 @@
         }
 
         .container {
-            width: 500px;
+            width: 520px;
             background: #111827;
             padding: 20px;
             border-radius: 15px;
@@ -25,23 +27,28 @@
         h1 {
             text-align: center;
             margin-bottom: 5px;
-            font-size: 22px;
         }
 
         .author {
             text-align: center;
             font-size: 13px;
             color: #9ca3af;
+            margin-bottom: 10px;
+        }
+
+        .info {
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
             margin-bottom: 15px;
         }
 
         textarea {
             width: 100%;
-            height: 100px;
+            height: 80px;
             border-radius: 10px;
             border: none;
             padding: 10px;
-            font-size: 14px;
             resize: none;
             outline: none;
         }
@@ -49,40 +56,48 @@
         button {
             width: 100%;
             margin-top: 10px;
-            padding: 12px;
+            padding: 10px;
             background: #3b82f6;
-            color: white;
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            color: white;
             cursor: pointer;
-            transition: 0.2s;
         }
 
         button:hover {
             background: #2563eb;
         }
 
-        .response {
-            margin-top: 20px;
-            background: #1f2937;
-            padding: 15px;
+        .chat {
+            margin-top: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .msg {
+            padding: 10px;
             border-radius: 10px;
-            min-height: 60px;
+            max-width: 80%;
             white-space: pre-wrap;
         }
 
-        .label {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-bottom: 5px;
+        .user {
+            background: #374151;
+            align-self: flex-end;
         }
 
-        .info {
+        .ai {
+            background: #1f2937;
+            align-self: flex-start;
+        }
+
+        .loading {
+            text-align: center;
             font-size: 12px;
             color: #9ca3af;
-            text-align: center;
-            margin-top: 10px;
         }
     </style>
 </head>
@@ -95,23 +110,29 @@
     <div class="author">Ondřej Buček</div>
 
     <div class="info">
-        Tento nástroj je určen pro <b>stručné odpovědi IT podpory</b>
+        Nástroj pro <b>stručné odpovědi IT podpory</b>
     </div>
 
-    <div class="label">Napiš problém nebo otázku:</div>
-    <textarea id="problem" placeholder="např. Nejde mi internet v PC..."></textarea>
+    <textarea id="problem" placeholder="např. Nejde mi internet..."></textarea>
 
     <button onclick="send()">Odeslat</button>
+    <button onclick="loadHistory()">Načíst historii</button>
 
-    <div class="response" id="response">Odpověď se zobrazí zde...</div>
+    <div class="chat" id="chat"></div>
 </div>
 
 <script>
 async function send() {
     const problem = document.getElementById("problem").value;
-    const out = document.getElementById("response");
+    const chat = document.getElementById("chat");
 
-    out.innerText = "AI přemýšlí...";
+    if (!problem.trim()) return;
+
+    // zobraz user zprávu
+    chat.innerHTML += `<div class="msg user">${problem}</div>`;
+    chat.innerHTML += `<div class="loading" id="loading">AI přemýšlí...</div>`;
+
+    chat.scrollTop = chat.scrollHeight;
 
     try {
         const res = await fetch("/ai", {
@@ -121,10 +142,42 @@ async function send() {
         });
 
         const data = await res.json();
-        out.innerText = data.answer;
+
+        document.getElementById("loading").remove();
+
+        chat.innerHTML += `<div class="msg ai">${data.answer}</div>`;
+        chat.scrollTop = chat.scrollHeight;
 
     } catch (e) {
-        out.innerText = "Chyba spojení s API";
+        document.getElementById("loading").remove();
+        chat.innerHTML += `<div class="msg ai">Chyba API</div>`;
+    }
+}
+
+async function loadHistory() {
+    const chat = document.getElementById("chat");
+    chat.innerHTML = `<div class="loading">Načítám historii...</div>`;
+
+    try {
+        const res = await fetch("/history");
+        const data = await res.json();
+
+        chat.innerHTML = "";
+
+        if (data.length === 0) {
+            chat.innerHTML = `<div class="msg ai">Žádná historie.</div>`;
+            return;
+        }
+
+        data.reverse().forEach(item => {
+            chat.innerHTML += `<div class="msg user">${item.problem}</div>`;
+            chat.innerHTML += `<div class="msg ai">${item.answer}</div>`;
+        });
+
+        chat.scrollTop = chat.scrollHeight;
+
+    } catch (e) {
+        chat.innerHTML = `<div class="msg ai">❌ Nepodařilo se načíst historii</div>`;
     }
 }
 </script>
